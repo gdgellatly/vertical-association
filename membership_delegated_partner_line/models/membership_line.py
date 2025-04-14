@@ -44,9 +44,10 @@ class MembershipLine(models.Model):
             )
             if inv_line and inv_line.delegated_member_id:
                 vals["partner"] = inv_line.delegated_member_id.id
+            return super().write(vals)
         else:
             for record in self:
-                record.partner = (
-                    record.account_invoice_line._get_partner_for_membership()
-                )
-        return super().write(vals)
+                partner = record.account_invoice_line._get_partner_for_membership()
+                vals["partner"] = partner.id
+                super(MembershipLine, record).write(vals)
+            return True
