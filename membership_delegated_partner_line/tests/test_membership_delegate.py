@@ -23,6 +23,12 @@ class TestMembershipDelegate(common.SavepointCase):
                 "membership_date_to": "2017-12-31",
             }
         )
+        cls.non_membership_product = cls.env["product.product"].create(
+            {
+                "name": "Test other product",
+                "membership": False,
+            }
+        )
         cls.account_type = cls.env["account.account.type"].create(
             {"name": "Test", "type": "receivable", "internal_group": "asset"}
         )
@@ -149,3 +155,50 @@ class TestMembershipDelegate(common.SavepointCase):
         self.assertEqual(get_member(), self.partner2)
         invoice.invoice_line_ids[0].delegated_member_id = False
         self.assertEqual(get_member(), self.partner1)
+
+    def test_is_membership_invoice(self):
+
+        invoice = self.env["account.move"].create(
+            {
+                "name": "Test Customer Invoice",
+                "move_type": "out_invoice",
+                "partner_id": self.partner1.id,  # Invoicing partner
+            }
+        )
+        self.env["account.move.line"].create([
+            {
+                "move_id": invoice.id,
+                "name": "Non membership",
+                "account_id": self.account.id,
+                "product_id": self.non_membership_product.id,
+                "price_unit": 1.0,
+            },
+            {
+                "move_id": invoice.id,
+                "name": "Membership for delegate member",
+                "account_id": self.account.id,
+                "product_id": self.product.id,
+                "price_unit": 1.0,
+            }
+        ])
+        self.assertTrue(invoice.is_membership_invoice)
+
+    def test_not_is_membership_invoice(self):
+
+        invoice = self.env["account.move"].create(
+            {
+                "name": "Test Customer Invoice",
+                "move_type": "out_invoice",
+                "partner_id": self.partner1.id,  # Invoicing partner
+            }
+        )
+        self.env["account.move.line"].create([
+            {
+                "move_id": invoice.id,
+                "name": "Non membership",
+                "account_id": self.account.id,
+                "product_id": self.non_membership_product.id,
+                "price_unit": 1.0,
+            },
+        ])
+        self.assertFalse(invoice.is_membership_invoice)
